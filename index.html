@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mathe-Quiz</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #ffffff;
+    --text: #1e293b;
+    --muted: #64748b;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --correct: #16a34a;
+    --wrong: #dc2626;
+    --border: #e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background: linear-gradient(135deg, #1e3a8a, #0f172a);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    min-height: 100vh;
+  }
+  .card {
+    width: 100%;
+    max-width: 480px;
+    background: var(--card);
+    border-radius: 20px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+    padding: 28px;
+    animation: pop .25s ease;
+  }
+  @keyframes pop {
+    from { transform: scale(.97); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 1.6rem;
+    text-align: center;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    margin: 0 0 22px;
+    font-size: .95rem;
+  }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  fieldset {
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    margin: 0 0 16px;
+    padding: 14px 16px;
+  }
+  legend {
+    font-weight: 600;
+    padding: 0 8px;
+    color: var(--text);
+  }
+  .options { display: flex; gap: 10px; flex-wrap: wrap; }
+  .options label {
+    flex: 1 1 0;
+    min-width: 90px;
+    text-align: center;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all .15s ease;
+    user-select: none;
+  }
+  .options input { display: none; }
+  .options label:hover { border-color: var(--primary); background: #eff6ff; }
+  .options input:checked + span { color: var(--primary); }
+  .options label:has(input:checked) {
+    border-color: var(--primary);
+    background: #eff6ff;
+    box-shadow: 0 0 0 1px var(--primary) inset;
+  }
+  button.primary {
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--primary);
+    cursor: pointer;
+    transition: background .15s ease, transform .1s ease;
+    margin-top: 6px;
+  }
+  button.primary:hover { background: var(--primary-hover); }
+  button.primary:active { transform: scale(.98); }
+
+  /* Quiz screen */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .topbar .score { color: var(--primary); }
+  .progress-track {
+    height: 8px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 26px;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0;
+    background: var(--primary);
+    border-radius: 999px;
+    transition: width .3s ease;
+  }
+  .question {
+    text-align: center;
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin: 18px 0 26px;
+    min-height: 3.2rem;
+  }
+  .answers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .answers button {
+    border: 2px solid var(--border);
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 8px;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .answers button:hover:not(:disabled) {
+    border-color: var(--primary);
+    background: #eff6ff;
+    transform: translateY(-2px);
+  }
+  .answers button:disabled { cursor: default; }
+  .answers button.correct {
+    border-color: var(--correct);
+    background: #dcfce7;
+    color: var(--correct);
+  }
+  .answers button.wrong {
+    border-color: var(--wrong);
+    background: #fee2e2;
+    color: var(--wrong);
+  }
+
+  /* Result screen */
+  .result-score {
+    text-align: center;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--primary);
+    margin: 10px 0 0;
+  }
+  .result-pct {
+    text-align: center;
+    font-size: 1.2rem;
+    color: var(--muted);
+    margin: 4px 0 18px;
+  }
+  .result-msg {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 26px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+
+  <!-- Start-Screen -->
+  <section id="screen-start" class="screen active">
+    <h1>Mathe-Quiz</h1>
+    <p class="subtitle">Teste dein Kopfrechnen!</p>
+
+    <fieldset>
+      <legend>Fragenanzahl</legend>
+      <div class="options" id="opt-count">
+        <label><input type="radio" name="count" value="5" checked><span>5</span></label>
+        <label><input type="radio" name="count" value="10"><span>10</span></label>
+        <label><input type="radio" name="count" value="20"><span>20</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Schwierigkeit</legend>
+      <div class="options" id="opt-diff">
+        <label><input type="radio" name="diff" value="easy" checked><span>Einfach</span></label>
+        <label><input type="radio" name="diff" value="medium"><span>Mittel</span></label>
+        <label><input type="radio" name="diff" value="hard"><span>Schwer</span></label>
+      </div>
+    </fieldset>
+
+    <button class="primary" id="btn-start">Spiel starten</button>
+  </section>
+
+  <!-- Quiz-Screen -->
+  <section id="screen-quiz" class="screen">
+    <div class="topbar">
+      <span id="q-progress">Frage 1 von 10</span>
+      <span class="score">Punkte: <span id="q-score">0</span></span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="question" id="question">&nbsp;</div>
+    <div class="answers" id="answers"></div>
+  </section>
+
+  <!-- Ergebnis-Screen -->
+  <section id="screen-result" class="screen">
+    <h1>Ergebnis</h1>
+    <div class="result-score" id="res-score">0 / 0</div>
+    <div class="result-pct" id="res-pct">0 %</div>
+    <div class="result-msg" id="res-msg"></div>
+    <button class="primary" id="btn-restart">Nochmal spielen</button>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var state = { total: 0, index: 0, score: 0, difficulty: "easy", question: null, locked: false };
+
+  var screens = {
+    start: document.getElementById("screen-start"),
+    quiz: document.getElementById("screen-quiz"),
+    result: document.getElementById("screen-result")
+  };
+
+  function show(name) {
+    Object.keys(screens).forEach(function (k) {
+      screens[k].classList.toggle("active", k === name);
+    });
+  }
+
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function pick(arr) {
+    return arr[randInt(0, arr.length - 1)];
+  }
+
+  // Erzeugt einen Rechenschritt je Schwierigkeit (immer ganzzahlig, keine negativen Ergebnisse).
+  function makeOp(diff) {
+    var op = pick(["+", "-", "\u00d7", "\u00f7"]);
+
+    if (diff === "easy") {
+      if (op === "+") { var a = randInt(1, 20), b = randInt(1, 20 - a); return { a: a, b: b, op: op }; }
+      if (op === "-") { var x = randInt(2, 20), y = randInt(1, x); return { a: x, b: y, op: op }; }
+      if (op === "\u00d7") { var m1 = randInt(1, 5), m2 = randInt(1, 5); return { a: m1, b: m2, op: op }; }
+      var dv = randInt(1, 5), q = randInt(1, 5); return { a: dv * q, b: dv, op: op };
+    }
+
+    if (diff === "medium") {
+      if (op === "+") { var a2 = randInt(10, 90), b2 = randInt(2, 100 - a2); return { a: a2, b: b2, op: op }; }
+      if (op === "-") { var x2 = randInt(20, 100), y2 = randInt(2, x2); return { a: x2, b: y2, op: op }; }
+      if (op === "\u00d7") { var m1b = randInt(2, 10), m2b = randInt(2, 10); return { a: m1b, b: m2b, op: op }; }
+      var dv2 = randInt(2, 10), q2 = randInt(2, 10); return { a: dv2 * q2, b: dv2, op: op };
+    }
+
+    // hard
+    if (op === "+") { var a3 = randInt(50, 450), b3 = randInt(10, 500 - a3); return { a: a3, b: b3, op: op }; }
+    if (op === "-") { var x3 = randInt(100, 500), y3 = randInt(10, x3); return { a: x3, b: y3, op: op }; }
+    if (op === "\u00d7") { var m1c = randInt(11, 25), m2c = randInt(3, 12); return { a: m1c, b: m2c, op: op }; }
+    var dv3 = randInt(3, 15), q3 = randInt(4, 20); return { a: dv3 * q3, b: dv3, op: op };
+  }
+
+  function evalStep(o) {
+    switch (o.op) {
+      case "+": return o.a + o.b;
+      case "-": return o.a - o.b;
+      case "\u00d7": return o.a * o.b;
+      case "\u00f7": return o.a / o.b;
+    }
+  }
+
+  // Erzeugt eine Aufgabe mit variierender Lückenposition.
+  function makeQuestion(diff) {
+    var o = makeOp(diff);
+    var full = o.a + " " + o.op + " " + o.b;   // vollstaendiger Ausdruck
+    var value = evalStep(o);                    // Ergebnis
+    var formats = ["result", "first", "second", "reversed", "leading"];
+
+    // Bei Subtraktion/Duplikat-Gefahr alle Formate erlaubt; bei Division immer ganzzahlig.
+    var format = pick(formats);
+    if (o.op === "-" && format === "first") format = "second";
+
+    var prompt, answer, expr;
+    switch (format) {
+      case "result":
+        prompt = full + " = ?"; answer = value; break;
+      case "first":
+        prompt = "? " + o.op + " " + o.b + " = " + value; answer = o.a; break;
+      case "second":
+        prompt = o.a + " " + o.op + " ? = " + value; answer = o.b; break;
+      case "reversed":
+        prompt = value + " = " + o.a + " " + o.op + " ?"; answer = o.b; break;
+      default: // leading: "? = a op b"
+        prompt = "? = " + full; answer = value; break;
+    }
+
+    return { prompt: prompt, answer: answer };
+  }
+
+  // 4 Antworten: 1 korrekt + 3 plausible Distraktoren ohne Duplikate.
+  function makeAnswers(answer) {
+    var set = [answer];
+    var spread = Math.max(2, Math.round(Math.abs(answer) * 0.15) + 1);
+    var guard = 0;
+    while (set.length < 4 && guard++ < 200) {
+      var delta = randInt(1, spread + 2);
+      var candidate = answer + (Math.random() < 0.5 ? -delta : delta);
+      if (candidate < 0) candidate = answer + delta;
+      if (candidate !== answer && set.indexOf(candidate) === -1) set.push(candidate);
+    }
+    // Fallback, falls noch Luecken bestehen
+    var fill = answer + 5;
+    while (set.length < 4) { if (set.indexOf(fill) === -1) set.push(fill); fill += 3; }
+
+    for (var i = set.length - 1; i > 0; i--) {
+      var j = randInt(0, i);
+      var t = set[i]; set[i] = set[j]; set[j] = t;
+    }
+    return set;
+  }
+
+  function startGame() {
+    var count = parseInt(document.querySelector('input[name="count"]:checked').value, 10);
+    state.difficulty = document.querySelector('input[name="diff"]:checked').value;
+    state.total = count;
+    state.index = 0;
+    state.score = 0;
+    show("quiz");
+    nextQuestion();
+  }
+
+  function nextQuestion() {
+    if (state.index >= state.total) { finish(); return; }
+    state.locked = false;
+
+    document.getElementById("q-progress").textContent =
+      "Frage " + (state.index + 1) + " von " + state.total;
+    document.getElementById("q-score").textContent = state.score;
+    document.getElementById("progress-fill").style.width =
+      (state.index / state.total * 100) + "%";
+
+    state.question = makeQuestion(state.difficulty);
+    document.getElementById("question").textContent = state.question.prompt;
+
+    var answers = makeAnswers(state.question.answer);
+    var box = document.getElementById("answers");
+    box.innerHTML = "";
+    answers.forEach(function (val) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = val;
+      btn.addEventListener("click", function () { choose(btn, val); });
+      box.appendChild(btn);
+    });
+  }
+
+  function choose(btn, val) {
+    if (state.locked) return;
+    state.locked = true;
+    var correct = state.question.answer;
+    var buttons = document.querySelectorAll("#answers button");
+
+    buttons.forEach(function (b) {
+      b.disabled = true;
+      if (parseInt(b.textContent, 10) === correct) b.classList.add("correct");
+    });
+
+    if (val === correct) {
+      state.score++;
+      document.getElementById("q-score").textContent = state.score;
+    } else {
+      btn.classList.add("wrong");
+    }
+
+    setTimeout(function () {
+      state.index++;
+      nextQuestion();
+    }, 1200);
+  }
+
+  function finish() {
+    var pct = state.total ? Math.round(state.score / state.total * 100) : 0;
+    document.getElementById("res-score").textContent = state.score + " / " + state.total;
+    document.getElementById("res-pct").textContent = pct + " %";
+
+    var msg;
+    if (pct === 100) msg = "Perfekt! \uD83C\uDF89";
+    else if (pct >= 80) msg = "Gut gemacht!";
+    else if (pct >= 50) msg = "Weiter so!";
+    else msg = "\u00dcbe noch ein bisschen!";
+    document.getElementById("res-msg").textContent = msg;
+
+    show("result");
+  }
+
+  document.getElementById("btn-start").addEventListener("click", startGame);
+  document.getElementById("btn-restart").addEventListener("click", function () { show("start"); });
+})();
+</script>
+</body>
+</html>
